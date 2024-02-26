@@ -23,7 +23,7 @@ jobs:
         env:
           CI: true
         run: |
-          cd ../../src
+          cd src
           ci install
       - name: deploy
         run: |
