@@ -27,7 +27,8 @@ jobs:
           npm install
       - name: deploy
         run: |
-          npx ncc build ../../src/index.js
+          cd src
+          npx ncc build index.js
           zip -j deploy.zip ./dist/*
           aws lambda update-function-code --function-name=MainOrchestratorLambdaFunction --zip-file=fileb://deploy.zip
 
