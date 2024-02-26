@@ -23,7 +23,8 @@ jobs:
         env:
           CI: true
         run: |
-          npm install
+          cd ../../src
+          ci install
       - name: deploy
         run: |
           npx ncc build ../../src/index.js
