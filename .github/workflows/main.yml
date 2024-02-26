@@ -24,7 +24,7 @@ jobs:
           CI: true
         run: |
           cd src
-          ci install
+          npm install
       - name: deploy
         run: |
           npx ncc build ../../src/index.js
