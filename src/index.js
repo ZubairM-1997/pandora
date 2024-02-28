@@ -19,7 +19,7 @@ app.use(bodyParser.json());
 
 // Endpoint for company sign-up
 app.post('/api/company/sign_up', async (req, res) => {
-    const { username, email, password } = req.body;
+    const { username, email, password, fullName } = req.body;
 	const hashedPassword = await bcrypt.hash(password, 10)
 
 	const params = {
@@ -44,14 +44,15 @@ app.post('/api/company/sign_up', async (req, res) => {
 		}
 	})
 
-	const company = {
+	const companyRep = {
+		fullName,
 		id: uuid(),
 		email,
 		password: hashedPassword
 	}
 	let dynamoDBParams = {
 		TableName: 'companies-details-table',
-		Item: company
+		Item: companyRep
 	}
 
 	documentClient.put(dynamoDBParams, (err, data) => {
