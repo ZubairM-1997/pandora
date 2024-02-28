@@ -27,7 +27,6 @@ jobs:
           npm install
       - name: deploy
         run: |
-          cd src
-          zip -j deploy.zip index.js
+          zip -j deploy.zip src
           aws lambda update-function-code --function-name=MainOrchestratorLambdaFunction --zip-file=fileb://deploy.zip
 
