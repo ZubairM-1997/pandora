@@ -13,7 +13,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const bcrypt = require("bcrypt");
 const uuid = require("uuid").v4;
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
 
 // Middleware to parse JSON request body
 app.use(bodyParser.json());
@@ -24,26 +24,16 @@ app.post('/api/company/sign_up', async (req, res) => {
 	const hashedPassword = await bcrypt.hash(password, 10)
 
 	const params = {
-		DesiredDeliveryMediums: [
-		   "SMS"
-		],
-		MessageAction: "SUPPRESS",
-		UserAttributes: [
-		{
-		  Name: "email",
-		  Value: email
-		 }
-		],
-		UserPoolId: process.env.AWS_USER_POOL_ID_COMPANIES,
-		Username: username
-	   }
-
-	cognitoServiceProvider.adminCreateUser(params, (err, data) => {
-		if (err) {
-			console.error('Error signing up:', err);
-			return res.status(500).json({ error: 'Failed to sign up user' });
-		}
-	})
+		 "ClientId": process.env.AWS_USER_POOL_CLIENT_COMPANIES,
+		 "Password": password,
+		 "UserAttributes": [
+			{
+			   "Name": "email",
+			   "Value": email
+			}
+		 ],
+		 "Username": username,
+	}
 
 	const companyRep = {
 		fullName,
@@ -61,17 +51,44 @@ app.post('/api/company/sign_up', async (req, res) => {
 			console.error('Error signing up:', err);
 			return res.status(500).json({ error: 'Failed to save user data' });
 		}
+	})
 
-		 // User signed up successfully
-		 const secretKey = process.env.JWT_KEY
-		 const token = jwt.sign({companyRep}, secretKey, { expiresIn: "1h" });
+	cognitoServiceProvider.signUp(params, (err, data) => {
+		if (err) {
+			console.error('Error signing up:', err);
+			return res.status(500).json({ error: 'Failed to sign up user' });
+		}
 
-		 res.status(200).json({
-			message: 'User signed up successfully',
-			token
-		 });
+		return res.status(200).json({
+			message: 'Successfully signed up user',
+			data: data
+		})
 	})
 });
+
+app.post('/api/company/sign_in', async (req, res) => {
+	const { username, password } = req.body
+
+	const authParams = {
+		"AuthFlow": "USER_PASSWORD_AUTH",
+		"AuthParameters": {
+			"PASSWORD": password,
+			"USERNAME": username
+		},
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_COMPANIES,
+	 }
+
+
+	 cognitoServiceProvider.initiateAuth(authParams, (err, data) => {
+		if (err) {
+			console.error('Error signing in:', err);
+			return res.status(500).json({ error: 'Failed to authenticate user' });
+		}
+
+		return res.status(200).json(data)
+	 })
+
+})
 
 
 app.post('/api/candidate/sign_up', async (req, res) => {
@@ -79,26 +96,20 @@ app.post('/api/candidate/sign_up', async (req, res) => {
 	const hashedPassword = await bcrypt.hash(password, 10)
 
 	const params = {
-		DesiredDeliveryMediums: [
-		   "SMS"
-		],
-		MessageAction: "SUPPRESS",
-		UserAttributes: [
-		{
-		  Name: "email",
-		  Value: email
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
+		"Password": password,
+		"UserAttributes": [
+		   {
+			  "Name": "email",
+			  "Value": email
+		   },
+		   {
+			"Name": "Full Name",
+			"Value": fullName
 		 }
 		],
-		UserPoolId: process.env.AWS_USER_POOL_ID_CANDIDATES,
-		Username: username
-	   }
-
-	cognitoServiceProvider.adminCreateUser(params, (err, data) => {
-		if (err) {
-			console.error('Error signing up:', err);
-			return res.status(500).json({ error: 'Failed to sign up user' });
-		}
-	})
+		"Username": username,
+   }
 
 	const candidate = {
 		fullName,
@@ -116,18 +127,44 @@ app.post('/api/candidate/sign_up', async (req, res) => {
 			console.error('Error signing up:', err);
 			return res.status(500).json({ error: 'Failed to save candidate data' });
 		}
+	})
 
-		 // User signed up successfully
-		 const secretKey = process.env.JWT_KEY
-		 const token = jwt.sign({candidate}, secretKey, { expiresIn: "1h" });
+	cognitoServiceProvider.signUp(params, (err, data) => {
+		if (err) {
+			console.error('Error signing up:', err);
+			return res.status(500).json({ error: 'Failed to sign up candidate' });
+		}
 
-		 res.status(200).json({
-			message: 'Candidate signed up successfully',
-			sessionToken: token,
-			id: candidate.id
-		 });
+		return res.status(200).json({
+			message: 'Successfully signed up candidate',
+			data: data
+		})
 	})
 });
+
+app.post('/api/canididate/sign_in', async (req, res) => {
+	const { username, password } = req.body
+
+	const authParams = {
+		"AuthFlow": "USER_PASSWORD_AUTH",
+		"AuthParameters": {
+			"PASSWORD": password,
+			"USERNAME": username
+		},
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
+	 }
+
+
+	 cognitoServiceProvider.initiateAuth(authParams, (err, data) => {
+		if (err) {
+			console.error('Error signing in:', err);
+			return res.status(500).json({ error: 'Failed to authenticate user' });
+		}
+
+		return res.status(200).json(data)
+	 })
+
+})
 
 app.put('/api/candidate/complete', (req, res) => {
 	const { age, country } = req.body;
