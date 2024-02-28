@@ -13,6 +13,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const bcrypt = require("bcrypt");
 const uuid = require("uuid").v4;
+const jwt = require("jsonwebtoken")
 
 // Middleware to parse JSON request body
 app.use(bodyParser.json());
@@ -62,7 +63,13 @@ app.post('/api/company/sign_up', async (req, res) => {
 		}
 
 		 // User signed up successfully
-		 res.status(200).json({ message: 'User signed up successfully' });
+		 const secretKey = process.env.JWT_KEY
+		 const token = jwt.sign({companyRep}, secretKey, { expiresIn: "1h" });
+
+		 res.status(200).json({
+			message: 'User signed up successfully',
+			token
+		 });
 	})
 });
 

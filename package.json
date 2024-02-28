@@ -2,6 +2,7 @@
   "dependencies": {
     "@vercel/ncc": "^0.38.1",
     "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
     "uuid": "^9.0.1"
   }
 }
