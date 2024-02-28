@@ -29,5 +29,5 @@ jobs:
         run: |
           cd src
           zip -j myLambdaFunction.zip index.js aws.js
-          aws lambda update-function-code --function-name=MainOrchestratorLambdaFunction --zip-file=fileb://deploy.zip
+          aws lambda update-function-code --function-name=MainOrchestratorLambdaFunction --zip-file=fileb://myLambdaFunction.zip
 
