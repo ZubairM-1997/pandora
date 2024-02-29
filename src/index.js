@@ -13,7 +13,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const bcrypt = require("bcrypt");
 const uuid = require("uuid").v4;
-const jwt = require("jsonwebtoken");
+const { createHmac } = require('crypto');
 
 // Middleware to parse JSON request body
 app.use(bodyParser.json());
@@ -22,6 +22,10 @@ app.use(bodyParser.json());
 app.post('/api/company/sign_up', async (req, res) => {
     const { username, email, password, fullName } = req.body;
 	const hashedPassword = await bcrypt.hash(password, 10)
+	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_COMPANIES);
+	// AWS wants `"Username" + "Client Id"`
+	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_COMPANIES}`);
+	const secretHash = hasher.digest('base64');
 
 	const params = {
 		 "ClientId": process.env.AWS_USER_POOL_CLIENT_COMPANIES,
@@ -33,6 +37,7 @@ app.post('/api/company/sign_up', async (req, res) => {
 			}
 		 ],
 		 "Username": username,
+		 "SecretHash": secretHash
 	}
 
 	const companyRep = {
@@ -41,44 +46,80 @@ app.post('/api/company/sign_up', async (req, res) => {
 		email,
 		password: hashedPassword
 	}
+
 	let dynamoDBParams = {
 		TableName: 'companies-details-table',
 		Item: companyRep
 	}
 
-	documentClient.put(dynamoDBParams, (err, data) => {
-		if (err) {
-			console.error('Error signing up:', err);
-			return res.status(500).json({ error: 'Failed to save user data' });
-		}
-	})
-
-	cognitoServiceProvider.signUp(params, (err, data) => {
+	const user = cognitoServiceProvider.signUp(params, (err, data) => {
 		if (err) {
 			console.error('Error signing up:', err);
 			return res.status(500).json({ error: 'Failed to sign up user' });
 		}
 
-		return res.status(200).json({
-			message: 'Successfully signed up user',
-			data: data,
-			userId: companyRep.id
-		})
+		return data;
 	})
+
+	if(user){
+		documentClient.put(dynamoDBParams, (err, data) => {
+			if (err) {
+				console.error('Error signing up:', err);
+				return res.status(500).json({ error: 'Failed to save user data' });
+			}
+
+			return res.status(200).json({
+				message: 'Successfully signed up user',
+				userId: companyRep.id
+			})
+		})
+	}
 });
+
+app.post('/api/company/confirmSignUp', async (req, res) => {
+	const { username, confirmationCode } = req.body
+	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_COMPANIES);
+	// AWS wants `"Username" + "Client Id"`
+	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_COMPANIES}`);
+	const secretHash = hasher.digest('base64');
+
+
+	const authParams = {
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_COMPANIES,
+		"ConfirmationCode": confirmationCode,
+		"SecretHash": secretHash,
+		"Username": username
+	 }
+
+	 cognitoServiceProvider.confirmSignUp(authParams, (err, data) => {
+		if (err) {
+			console.error('Error signing in:', err);
+			return res.status(500).json({ error: 'Failed to authenticate user' });
+		}
+
+		return res.status(200).json({
+			message: "User has now been confirmed"
+		})
+	 })
+})
 
 app.post('/api/company/sign_in', async (req, res) => {
 	const { username, password } = req.body
+	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_COMPANIES);
+	// AWS wants `"Username" + "Client Id"`
+	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_COMPANIES}`);
+	const secretHash = hasher.digest('base64');
+
 
 	const authParams = {
 		"AuthFlow": "USER_PASSWORD_AUTH",
 		"AuthParameters": {
 			"PASSWORD": password,
-			"USERNAME": username
+			"USERNAME": username,
+			"SECRET_HASH": secretHash
 		},
-		"ClientId": process.env.AWS_USER_POOL_CLIENT_COMPANIES,
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_COMPANIES
 	 }
-
 
 	 cognitoServiceProvider.initiateAuth(authParams, (err, data) => {
 		if (err) {
