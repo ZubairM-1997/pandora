@@ -19,13 +19,17 @@ const { createHmac } = require('crypto');
 // Middleware to parse JSON request body
 app.use(bodyParser.json());
 
-router.post('/sign_up', async (req, res) => {
-    const { username, email, password, fullName } = req.body;
-	const hashedPassword = await bcrypt.hash(password, 10)
+const generateSecretHash = () => {
 	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_COMPANIES);
 	// AWS wants `"Username" + "Client Id"`
 	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_COMPANIES}`);
 	const secretHash = hasher.digest('base64');
+	return secretHash
+}
+
+router.post('/sign_up', async (req, res) => {
+    const { username, email, password, fullName } = req.body;
+	const hashedPassword = await bcrypt.hash(password, 10)
 
 	const params = {
 		 "ClientId": process.env.AWS_USER_POOL_CLIENT_COMPANIES,
@@ -37,7 +41,7 @@ router.post('/sign_up', async (req, res) => {
 			}
 		 ],
 		 "Username": username,
-		 "SecretHash": secretHash
+		 "SecretHash": generateSecretHash()
 	}
 
 	const companyRep = {
@@ -78,16 +82,11 @@ router.post('/sign_up', async (req, res) => {
 
 router.post('/confirmSignUp', async (req, res) => {
 	const { username, confirmationCode } = req.body
-	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_COMPANIES);
-	// AWS wants `"Username" + "Client Id"`
-	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_COMPANIES}`);
-	const secretHash = hasher.digest('base64');
-
 
 	const authParams = {
 		"ClientId": process.env.AWS_USER_POOL_CLIENT_COMPANIES,
 		"ConfirmationCode": confirmationCode,
-		"SecretHash": secretHash,
+		"SecretHash": generateSecretHash(),
 		"Username": username
 	 }
 
@@ -105,18 +104,13 @@ router.post('/confirmSignUp', async (req, res) => {
 
 router.post('/sign_in', async (req, res) => {
 	const { username, password } = req.body
-	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_COMPANIES);
-	// AWS wants `"Username" + "Client Id"`
-	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_COMPANIES}`);
-	const secretHash = hasher.digest('base64');
-
 
 	const authParams = {
 		"AuthFlow": "USER_PASSWORD_AUTH",
 		"AuthParameters": {
 			"PASSWORD": password,
 			"USERNAME": username,
-			"SECRET_HASH": secretHash
+			"SECRET_HASH": generateSecretHash()
 		},
 		"ClientId": process.env.AWS_USER_POOL_CLIENT_COMPANIES
 	 }
