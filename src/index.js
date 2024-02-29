@@ -137,7 +137,8 @@ app.post('/api/candidate/sign_up', async (req, res) => {
 
 		return res.status(200).json({
 			message: 'Successfully signed up candidate',
-			data: data
+			data: data,
+			candidateId: candidate.id
 		})
 	})
 });
@@ -182,7 +183,7 @@ app.put('/api/candidate/complete', (req, res) => {
 		}
 	}
 
-	documentClient.update(documentClientParams, (req, res) => {
+	documentClient.update(documentClientParams, (err, data) => {
 		if (err) {
 			console.error('Error signing up:', err);
 			return res.status(500).json({ error: 'Failed to update candidate data' });
