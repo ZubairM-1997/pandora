@@ -28,6 +28,6 @@ jobs:
       - name: deploy
         run: |
           cd src
-          zip -j myLambdaFunction.zip index.js aws.js routes/*.js
+          zip -j myLambdaFunction.zip index.js aws.js routes
           aws lambda update-function-code --function-name=MainOrchestratorLambdaFunction --zip-file=fileb://myLambdaFunction.zip
 
