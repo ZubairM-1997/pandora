@@ -1,0 +1,197 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
+const express = require('express');
+const router = express.Router();
+const bodyParser = require('body-parser');
+const {
+	cognitoServiceProvider,
+	dynamoDB,
+	s3Client,
+	documentClient
+} = require('../aws.js')
+
+const app = express();
+const bcrypt = require("bcrypt");
+const uuid = require("uuid").v4;
+const { createHmac } = require('crypto');
+
+// Middleware to parse JSON request body
+app.use(bodyParser.json());
+
+router.post('/sign_up', async (req, res) => {
+    const { username, email, password, fullName } = req.body;
+	const hashedPassword = await bcrypt.hash(password, 10)
+	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_CANDIDATES);
+	// AWS wants `"Username" + "Client Id"`
+	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_CANDIDATES}`);
+	const secretHash = hasher.digest('base64');
+
+	const params = {
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
+		"Password": password,
+		"UserAttributes": [
+		   {
+			  "Name": "email",
+			  "Value": email
+		   },
+		   {
+			"Name": "Full Name",
+			"Value": fullName
+		 }
+		],
+		"Username": username,
+		"SecretHash": secretHash
+   }
+
+	const candidate = {
+		fullName,
+		id: uuid(),
+		email,
+		password: hashedPassword
+	}
+	let dynamoDBParams = {
+		TableName: 'candidates-details-table',
+		Item: candidate
+	}
+
+	const user = cognitoServiceProvider.signUp(params, (err, data) => {
+		if (err) {
+			console.error('Error signing up:', err);
+			return res.status(500).json({ error: 'Failed to sign up candidate' });
+		}
+
+		return data;
+
+	})
+
+	if (user){
+		documentClient.put(dynamoDBParams, (err, data) => {
+			if (err) {
+				console.error('Error signing up:', err);
+				return res.status(500).json({ error: 'Failed to save candidate data' });
+			}
+
+			return res.status(200).json({
+				message: 'Successfully signed up candidate',
+				data: data,
+				candidateId: candidate.id
+			})
+		})
+	}
+});
+
+router.post('/sign_in', async (req, res) => {
+	const { username, password } = req.body
+	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_CANDIDATES);
+	// AWS wants `"Username" + "Client Id"`
+	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_CANDIDATES}`);
+	const secretHash = hasher.digest('base64');
+
+	const authParams = {
+		"AuthFlow": "USER_PASSWORD_AUTH",
+		"AuthParameters": {
+			"PASSWORD": password,
+			"USERNAME": username,
+			"SECRET_HASH": secretHash
+		},
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
+	 }
+
+	 cognitoServiceProvider.initiateAuth(authParams, (err, data) => {
+		if (err) {
+			console.error('Error signing in:', err);
+			return res.status(500).json({ error: 'Failed to authenticate user' });
+		}
+
+		return res.status(200).json(data)
+	 })
+})
+
+router.post('/confirmSignUp', async (req, res) => {
+	const { username, confirmationCode } = req.body
+	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_CANDIDATES);
+	// AWS wants `"Username" + "Client Id"`
+	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_CANDIDATES}`);
+	const secretHash = hasher.digest('base64');
+
+
+	const authParams = {
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
+		"ConfirmationCode": confirmationCode,
+		"SecretHash": secretHash,
+		"Username": username
+	 }
+
+	 cognitoServiceProvider.confirmSignUp(authParams, (err, data) => {
+		if (err) {
+			console.error('Error signing in:', err);
+			return res.status(500).json({ error: 'Failed to authenticate user' });
+		}
+
+		return res.status(200).json({
+			message: "User has now been confirmed"
+		})
+	 })
+})
+
+router.put('/complete', async (req, res) => {
+	const { age, country } = req.body;
+	const { id } = req.params
+
+	const profilePicS3Params = {
+		Bucket: 'candidate-profile-pics-bucket',
+		Key: id
+	}
+
+	const cvS3Params = {
+		Bucket: 'candidate-cv-bucket',
+		Key: id
+	}
+
+	try {
+		const response = await s3Client.headObject(profilePicS3Params).promise();
+		const secondResponse = await s3Client.headObject(cvS3Params).promise();
+
+		if (response.status === 200 && secondResponse.status === 200){
+			await s3Client.deleteObject(profilePicS3Params).promise();
+			await s3client.deleteObject(cvS3Params).promise();
+			console.log("Previous picture and previous CV successfully deleted")
+	  }
+
+
+	  } catch (error) {
+		  console.error("Error deleting previous photo from S3:", error);
+		  throw error;
+	  }
+
+	  const cvS3UploadLink = s3Client.getSignedUrl('putObject', cvS3Params);
+	  const profilePicUploadLink = s3Client.getSignedUrl('putObject', profilePicS3Params)
+
+	const documentClientParams = {
+		TableName: 'candidates-details-table',
+		Key: { id: id },
+		UpdateExpression: `SET
+        age = :age,
+        country = :country`,
+		ExpressionAttributeValues: {
+			":age": age,
+			"country": country
+		}
+	}
+
+	documentClient.update(documentClientParams, (err, data) => {
+		if (err) {
+			console.error('Error signing up:', err);
+			return res.status(500).json({ error: 'Failed to update candidate data' });
+		}
+
+		res.status(200).json({
+			message: 'Company profile updated successfully',
+			cvUploadLink: cvS3UploadLink,
+			profilePicUploadLink: profilePicUploadLink
+		 });
+	})
+})
+
+module.exports = router;
