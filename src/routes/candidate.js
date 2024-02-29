@@ -33,11 +33,11 @@ router.post('/sign_up', async (req, res) => {
 		username,
 		password,
 		email,
-		fullName
+		firstName,
+		lastName,
 	} = req.body
 
 	const hashedPassword = await bcrypt.hash(password, 10)
-
 
 	const params = {
 		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
@@ -48,36 +48,43 @@ router.post('/sign_up', async (req, res) => {
 			  "Value": email
 		   },
 		   {
-			"Name": "Full Name",
-			"Value": fullName
-		 }
+				"Name": "given_name",
+				"Value": firstName
+		 	},
+			{
+				"Name": "family_name",
+				"Value": lastName
+			},
+
 		],
 		"Username": username,
 		"SecretHash": generateSecretHash(username)
    }
 
-	const candidate = {
-		fullName,
-		id: uuid(),
-		email,
-		password: hashedPassword
-	}
-	let dynamoDBParams = {
-		TableName: 'candidates-details-table',
-		Item: candidate
-	}
+   return new Promise((resolve, reject) => {
+		cognitoServiceProvider.signUp(params, (err, data) => {
+			console.log('inside');
+			if (err) {
+			console.log(err.message);
+			reject(err);
+			return;
+			}
 
-	const user = cognitoServiceProvider.signUp(params, (err, data) => {
-		if (err) {
-			console.error('Error signing up:', err);
-			return res.status(500).json({ error: 'Failed to sign up candidate' });
+			resolve(data);
+		})
+	}).then((data) => {
+		const candidate = {
+			firstName,
+			lastName,
+			id: data.UserSub,
+			email,
+			password: hashedPassword
+		}
+		let dynamoDBParams = {
+			TableName: 'candidates-details-table',
+			Item: candidate
 		}
 
-		return data;
-
-	})
-
-	if (user){
 		documentClient.put(dynamoDBParams, (err, data) => {
 			if (err) {
 				console.error('Error signing up:', err);
@@ -86,11 +93,10 @@ router.post('/sign_up', async (req, res) => {
 
 			return res.status(200).json({
 				message: 'Successfully signed up candidate',
-				data: data,
 				candidateId: candidate.id
 			})
 		})
-	}
+	})
 });
 
 router.post('/sign_in', async (req, res) => {

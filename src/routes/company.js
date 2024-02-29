@@ -44,28 +44,30 @@ router.post('/sign_up', async (req, res) => {
 		 "SecretHash": generateSecretHash(username)
 	}
 
-	const companyRep = {
-		fullName,
-		id: uuid(),
-		email,
-		password: hashedPassword
-	}
+	return new Promise((resolve, reject) => {
+		cognitoServiceProvider.signUp(params, (err, data) => {
+			console.log('inside');
+			if (err) {
+			console.log(err.message);
+			reject(err);
+			return;
+			}
 
-	let dynamoDBParams = {
-		TableName: 'companies-details-table',
-		Item: companyRep
-	}
-
-	const user = cognitoServiceProvider.signUp(params, (err, data) => {
-		if (err) {
-			console.error('Error signing up:', err);
-			return res.status(500).json({ error: 'Failed to sign up user' });
+			resolve(data);
+		})
+	}).then((data) => {
+		const companyRep = {
+			fullName,
+			email,
+			password: hashedPassword,
+			id: data.UserSub
 		}
 
-		return data;
-	})
+		let dynamoDBParams = {
+			TableName: 'companies-details-table',
+			Item: companyRep
+		}
 
-	if(user){
 		documentClient.put(dynamoDBParams, (err, data) => {
 			if (err) {
 				console.error('Error signing up:', err);
@@ -77,7 +79,7 @@ router.post('/sign_up', async (req, res) => {
 				userId: companyRep.id
 			})
 		})
-	}
+	})
 });
 
 router.post('/confirmSignUp', async (req, res) => {
