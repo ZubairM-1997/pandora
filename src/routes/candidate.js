@@ -29,6 +29,16 @@ const generateSecretHash = (username) => {
 }
 
 router.post('/sign_up', async (req, res) => {
+	const {
+		username,
+		password,
+		email,
+		fullName
+	} = req.body
+
+	const hashedPassword = await bcrypt.hash(password, 10)
+
+
 	const params = {
 		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
 		"Password": password,
@@ -148,7 +158,7 @@ router.put('/complete', async (req, res) => {
 
 		if (response.status === 200 && secondResponse.status === 200){
 			await s3Client.deleteObject(profilePicS3Params).promise();
-			await s3client.deleteObject(cvS3Params).promise();
+			await s3Client.deleteObject(cvS3Params).promise();
 			console.log("Previous picture and previous CV successfully deleted")
 	  }
 
