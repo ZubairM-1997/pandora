@@ -185,6 +185,10 @@ app.put('/api/company/complete', async (req, res) => {
 app.post('/api/candidate/sign_up', async (req, res) => {
     const { username, email, password, fullName } = req.body;
 	const hashedPassword = await bcrypt.hash(password, 10)
+	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_CANDIDATES);
+	// AWS wants `"Username" + "Client Id"`
+	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_CANDIDATES}`);
+	const secretHash = hasher.digest('base64');
 
 	const params = {
 		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
@@ -200,6 +204,7 @@ app.post('/api/candidate/sign_up', async (req, res) => {
 		 }
 		],
 		"Username": username,
+		"SecretHash": secretHash
    }
 
 	const candidate = {
@@ -213,39 +218,48 @@ app.post('/api/candidate/sign_up', async (req, res) => {
 		Item: candidate
 	}
 
-	documentClient.put(dynamoDBParams, (err, data) => {
-		if (err) {
-			console.error('Error signing up:', err);
-			return res.status(500).json({ error: 'Failed to save candidate data' });
-		}
-	})
-
-	cognitoServiceProvider.signUp(params, (err, data) => {
+	const user = cognitoServiceProvider.signUp(params, (err, data) => {
 		if (err) {
 			console.error('Error signing up:', err);
 			return res.status(500).json({ error: 'Failed to sign up candidate' });
 		}
 
-		return res.status(200).json({
-			message: 'Successfully signed up candidate',
-			data: data,
-			candidateId: candidate.id
-		})
+		return data;
+
 	})
+
+	if (user){
+		documentClient.put(dynamoDBParams, (err, data) => {
+			if (err) {
+				console.error('Error signing up:', err);
+				return res.status(500).json({ error: 'Failed to save candidate data' });
+			}
+
+			return res.status(200).json({
+				message: 'Successfully signed up candidate',
+				data: data,
+				candidateId: candidate.id
+			})
+		})
+	}
 });
 
 app.post('/api/canididate/sign_in', async (req, res) => {
 	const { username, password } = req.body
+	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_CANDIDATES);
+	// AWS wants `"Username" + "Client Id"`
+	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_CANDIDATES}`);
+	const secretHash = hasher.digest('base64');
 
 	const authParams = {
 		"AuthFlow": "USER_PASSWORD_AUTH",
 		"AuthParameters": {
 			"PASSWORD": password,
-			"USERNAME": username
+			"USERNAME": username,
+			"SECRET_HASH": secretHash
 		},
 		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
 	 }
-
 
 	 cognitoServiceProvider.initiateAuth(authParams, (err, data) => {
 		if (err) {
@@ -255,7 +269,33 @@ app.post('/api/canididate/sign_in', async (req, res) => {
 
 		return res.status(200).json(data)
 	 })
+})
 
+app.post('/api/candidate/confirmSignUp', async (req, res) => {
+	const { username, confirmationCode } = req.body
+	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_CANDIDATES);
+	// AWS wants `"Username" + "Client Id"`
+	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_CANDIDATES}`);
+	const secretHash = hasher.digest('base64');
+
+
+	const authParams = {
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
+		"ConfirmationCode": confirmationCode,
+		"SecretHash": secretHash,
+		"Username": username
+	 }
+
+	 cognitoServiceProvider.confirmSignUp(authParams, (err, data) => {
+		if (err) {
+			console.error('Error signing in:', err);
+			return res.status(500).json({ error: 'Failed to authenticate user' });
+		}
+
+		return res.status(200).json({
+			message: "User has now been confirmed"
+		})
+	 })
 })
 
 app.put('/api/candidate/complete', async (req, res) => {
