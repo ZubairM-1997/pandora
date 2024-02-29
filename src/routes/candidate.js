@@ -19,7 +19,7 @@ const { createHmac } = require('crypto');
 // Middleware to parse JSON request body
 app.use(bodyParser.json());
 
-const generateSecretHash = () => {
+const generateSecretHash = (username) => {
 	const hasher = createHmac('sha256', process.env.AWS_USER_POOL_CLIENT_SECRET_CANDIDATES);
 	// AWS wants `"Username" + "Client Id"`
 	hasher.update(`${username}${process.env.AWS_USER_POOL_CLIENT_CANDIDATES}`);
@@ -43,7 +43,7 @@ router.post('/sign_up', async (req, res) => {
 		 }
 		],
 		"Username": username,
-		"SecretHash": generateSecretHash()
+		"SecretHash": generateSecretHash(username)
    }
 
 	const candidate = {
@@ -91,7 +91,7 @@ router.post('/sign_in', async (req, res) => {
 		"AuthParameters": {
 			"PASSWORD": password,
 			"USERNAME": username,
-			"SECRET_HASH": generateSecretHash()
+			"SECRET_HASH": generateSecretHash(username)
 		},
 		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
 	 }
@@ -112,7 +112,7 @@ router.post('/confirmSignUp', async (req, res) => {
 	const authParams = {
 		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
 		"ConfirmationCode": confirmationCode,
-		"SecretHash": generateSecretHash(),
+		"SecretHash": generateSecretHash(username),
 		"Username": username
 	 }
 
