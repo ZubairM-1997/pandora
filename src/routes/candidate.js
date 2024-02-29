@@ -190,7 +190,7 @@ router.put('/complete', async (req, res) => {
 		}
 
 		res.status(200).json({
-			message: 'Company profile updated successfully',
+			message: 'Candidate profile updated successfully',
 			cvUploadLink: cvS3UploadLink,
 			profilePicUploadLink: profilePicUploadLink
 		 });

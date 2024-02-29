@@ -165,7 +165,7 @@ router.put('/complete', async (req, res) => {
 	documentClient.update(documentClientParams, (err, data) => {
 		if (err) {
 			console.error('Error signing up:', err);
-			return res.status(500).json({ error: 'Failed to update candidate data' });
+			return res.status(500).json({ error: 'Failed to update company data' });
 		}
 
 		res.status(200).json({
