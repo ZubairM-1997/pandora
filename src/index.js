@@ -61,7 +61,8 @@ app.post('/api/company/sign_up', async (req, res) => {
 
 		return res.status(200).json({
 			message: 'Successfully signed up user',
-			data: data
+			data: data,
+			userId: companyRep.id
 		})
 	})
 });
@@ -87,7 +88,56 @@ app.post('/api/company/sign_in', async (req, res) => {
 
 		return res.status(200).json(data)
 	 })
+})
 
+app.put('/api/company/complete', async (req, res) => {
+	const { companyName, country, city, photo } = req.body;
+	const { id } = req.params
+
+	const S3Params = {
+		Bucket: 'company-profile-pics-bucket',
+		Key: id
+	}
+
+	try {
+		const response = await s3Client.headObject(S3Params).promise();
+		if (response.status === 200){
+			  await s3Client.deleteObject(S3Params).promise();
+			  console.log("Previous picture deleted successfully")
+		}
+	  } catch (error) {
+		  console.error("Error deleting previous photo from S3:", error);
+		  throw error;
+	  }
+
+	  const s3Link = s3Client.getSignedUrl('putObject', S3Params)
+
+
+	const documentClientParams = {
+		TableName: 'companies-details-table',
+		Key: { id: id },
+		UpdateExpression: `SET
+        companyName = :companyName,
+        country = :country
+		city = :city`,
+		ExpressionAttributeValues: {
+			"companyName": companyName,
+			":country": country,
+			":city": city
+		}
+	}
+
+	documentClient.update(documentClientParams, (err, data) => {
+		if (err) {
+			console.error('Error signing up:', err);
+			return res.status(500).json({ error: 'Failed to update candidate data' });
+		}
+
+		res.status(200).json({
+			message: 'Company profile updated successfully',
+			s3Link: s3Link
+		 });
+	})
 })
 
 
@@ -167,13 +217,42 @@ app.post('/api/canididate/sign_in', async (req, res) => {
 
 })
 
-app.put('/api/candidate/complete', (req, res) => {
+app.put('/api/candidate/complete', async (req, res) => {
 	const { age, country } = req.body;
 	const { id } = req.params
 
+	const profilePicS3Params = {
+		Bucket: 'candidate-profile-pics-bucket',
+		Key: id
+	}
+
+	const cvS3Params = {
+		Bucket: 'candidate-cv-bucket',
+		Key: id
+	}
+
+	try {
+		const response = await s3Client.headObject(profilePicS3Params).promise();
+		const secondResponse = await s3Client.headObject(cvS3Params).promise();
+
+		if (response.status === 200 && secondResponse.status === 200){
+			await s3Client.deleteObject(profilePicS3Params).promise();
+			await s3client.deleteObject(cvS3Params).promise();
+			console.log("Previous picture and previous CV successfully deleted")
+	  }
+
+
+	  } catch (error) {
+		  console.error("Error deleting previous photo from S3:", error);
+		  throw error;
+	  }
+
+	  const cvS3UploadLink = s3Client.getSignedUrl('putObject', cvS3Params);
+	  const profilePicUploadLink = s3Client.getSignedUrl('putObject', profilePicS3Params)
+
 	const documentClientParams = {
 		TableName: 'candidates-details-table',
-		Key: { userId: id },
+		Key: { id: id },
 		UpdateExpression: `SET
         age = :age,
         country = :country`,
@@ -190,10 +269,11 @@ app.put('/api/candidate/complete', (req, res) => {
 		}
 
 		res.status(200).json({
-			message: 'Candidate updated successfully',
+			message: 'Company profile updated successfully',
+			cvUploadLink: cvS3UploadLink,
+			profilePicUploadLink: profilePicUploadLink
 		 });
 	})
-
 })
 
 // Start the server
