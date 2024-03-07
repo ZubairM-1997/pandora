@@ -128,7 +128,7 @@ router.post('/sign_in', async (req, res) => {
 })
 
 router.put('/complete', async (req, res) => {
-	const { companyName, country, city, photo } = req.body;
+	const { companyName, country, city } = req.body;
 	const { id } = req.params
 
 	const S3Params = {
@@ -175,6 +175,47 @@ router.put('/complete', async (req, res) => {
 			s3Link: s3Link
 		 });
 	})
+})
+
+router.post('/createJob', async (req, res) => {
+	const {
+		jobTitle,
+		jobType,
+		relocationAssistance,
+		industry,
+		description
+	} = req.body;
+
+	const job = {
+		job_id: uuid(),
+		jobTitle,
+		jobType,
+		relocationAssistance,
+		industry,
+	}
+
+	const documentClientParams = {
+		TableName: 'jobs-table',
+		Item: job
+	}
+
+	try {
+		await documentClient.put(documentClientParams).promise();
+
+		const s3Params = {
+			Bucket: 'jobsdescriptions-bucket',
+			Key: `${job.job_id}_${Date.now()}.txt`,
+			Body: description
+		}
+
+		await s3Client.putObject(s3Params).promise();
+
+		res.status(200).send('Job created successfully')
+
+	} catch(error) {
+		console.error('Error creating job', error)
+		res.status(500).send('Error creating job')
+	}
 })
 
 module.exports = router;
