@@ -224,13 +224,13 @@ router.get('/getAllCandidates', async (req, res) => {
 	}
 
 	try {
-		const jobs = [];
+		const candidates = [];
 		const items = await documentClient.scan(getParams).promise();
-		items.Items.forEach((job) => {
-			jobs.push(job)
+		items.Items.forEach((candidate) => {
+			candidates.push(candidate)
 		})
 		res.status(200).json({
-			jobs
+			candidates
 		})
 	} catch (error) {
 		console.error("Error fetching data from candidates table:", error);
@@ -252,9 +252,9 @@ router.get('/getOneCandidate/:id', async (req, res) => {
 	}
 
 	try {
-		 const foundJob = await documentClient.query(getParams).promise();
+		 const foundCandidate = await documentClient.query(getParams).promise();
 		 res.status(200).json({
-			foundJob
+			foundCandidate
 		 })
 	} catch(error) {
 		console.error("Error fetching data from candidates table:", error);
