@@ -267,4 +267,8 @@ router.post('/searchCandidates', () => {
 
 })
 
+router.post('/payment', () => {
+
+})
+
 module.exports = router;

@@ -256,4 +256,8 @@ router.post('/searchJobs', () => {
 
 })
 
+router.post('/payment', () => {
+	
+})
+
 module.exports = router;
