@@ -218,4 +218,53 @@ router.post('/createJob', async (req, res) => {
 	}
 })
 
+router.get('/getAllCandidates', async (req, res) => {
+	const getParams = {
+		TableName: 'candidates-details-table'
+	}
+
+	try {
+		const jobs = [];
+		const items = await documentClient.scan(getParams).promise();
+		items.Items.forEach((job) => {
+			jobs.push(job)
+		})
+		res.status(200).json({
+			jobs
+		})
+	} catch (error) {
+		console.error("Error fetching data from candidates table:", error);
+		throw error;
+	}
+})
+
+router.get('/getOneCandidate/:id', async (req, res) => {
+	const {
+		id
+	} = req.params
+
+	const getParams = {
+		TableName: 'candidates-details-table',
+		KeyConditionExpression: "id=:id",
+		ExpressionAttributeValues: {
+			":id": id
+		}
+	}
+
+	try {
+		 const foundJob = await documentClient.query(getParams).promise();
+		 res.status(200).json({
+			foundJob
+		 })
+	} catch(error) {
+		console.error("Error fetching data from candidates table:", error);
+		throw error;
+	}
+
+})
+
+router.post('/searchCandidates', () => {
+
+})
+
 module.exports = router;

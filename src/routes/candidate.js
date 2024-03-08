@@ -15,6 +15,7 @@ const app = express();
 const bcrypt = require("bcrypt");
 const uuid = require("uuid").v4;
 const { createHmac } = require('crypto');
+const { UserImportJobStatusType } = require('@aws-sdk/client-cognito-identity-provider');
 
 // Middleware to parse JSON request body
 app.use(bodyParser.json());
@@ -201,6 +202,58 @@ router.put('/complete', async (req, res) => {
 			profilePicUploadLink: profilePicUploadLink
 		 });
 	})
+})
+
+router.get('/getAllJobs', async (req, res) => {
+	const getParams = {
+		TableName: 'jobs-table'
+	}
+
+	try {
+		const jobs = [];
+		const items = await documentClient.scan(getParams).promise();
+		items.Items.forEach((job) => {
+			jobs.push(job)
+		})
+		res.status(200).json({
+			jobs
+		})
+	} catch (error) {
+		console.error("Error fetching data from jobs table:", error);
+		throw error;
+	}
+})
+
+router.get('/getOneJob/:job_id', async (req, res) => {
+	const {
+		job_id
+	} = req.params
+
+	const getParams = {
+		TableName: 'jobs-table',
+		KeyConditionExpression: "job_id=:job_id",
+		ExpressionAttributeValues: {
+			":job_id": job_id
+		}
+	}
+
+	try {
+		 const foundJob = await documentClient.query(getParams).promise();
+		 res.status(200).json({
+			foundJob
+		 })
+	} catch(error) {
+		console.error("Error fetching data from jobs table:", error);
+		throw error;
+	}
+})
+
+router.post('/createApplication', () => {
+
+})
+
+router.post('/searchJobs', () => {
+
 })
 
 module.exports = router;
