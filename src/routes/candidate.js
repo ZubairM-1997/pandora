@@ -280,8 +280,8 @@ router.get('/getCurrentAuthenticatedCandidate', async (req, res) => {
 			found
 		})
 	} catch(error){
-		console.error('Error finding recruiter', error)
-		res.status(500).send('Error finding recruiter')
+		console.error('Error finding candidate', error)
+		res.status(500).send('Error finding candidate')
 	}
 })
 
