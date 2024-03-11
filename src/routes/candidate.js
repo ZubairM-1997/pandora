@@ -253,11 +253,21 @@ router.post('/createApplication', () => {
 })
 
 router.post('/searchJobs', () => {
+	//will use ElasticSearch
 
 })
 
 router.post('/payment', () => {
-	
+	//will use StripeAPI
+
+})
+
+router.post('/forgotPassword', () => {
+
+})
+
+router.post('resetPassword', () => {
+
 })
 
 module.exports = router;

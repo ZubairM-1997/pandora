@@ -128,26 +128,33 @@ router.post('/sign_in', async (req, res) => {
 })
 
 router.put('/complete', async (req, res) => {
-	const { companyName, country, city } = req.body;
+	const {
+		companyName,
+		country,
+		city,
+		email,
+		phoneNumber,
+		consentData
+	} = req.body;
 	const { id } = req.params
 
-	const S3Params = {
-		Bucket: 'company-profile-pics-bucket',
-		Key: id
-	}
+	// const S3Params = {
+	// 	Bucket: 'company-profile-pics-bucket',
+	// 	Key: id
+	// }
 
-	try {
-		const response = await s3Client.headObject(S3Params).promise();
-		if (response.status === 200){
-			  await s3Client.deleteObject(S3Params).promise();
-			  console.log("Previous picture deleted successfully")
-		}
-	  } catch (error) {
-		  console.error("Error deleting previous photo from S3:", error);
-		  throw error;
-	  }
+	// try {
+	// 	const response = await s3Client.headObject(S3Params).promise();
+	// 	if (response.status === 200){
+	// 		  await s3Client.deleteObject(S3Params).promise();
+	// 		  console.log("Previous picture deleted successfully")
+	// 	}
+	//   } catch (error) {
+	// 	  console.error("Error deleting previous photo from S3:", error);
+	// 	  throw error;
+	//   }
 
-	  const s3Link = s3Client.getSignedUrl('putObject', S3Params)
+	//   const s3Link = s3Client.getSignedUrl('putObject', S3Params)
 
 
 	const documentClientParams = {
@@ -156,11 +163,18 @@ router.put('/complete', async (req, res) => {
 		UpdateExpression: `SET
         companyName = :companyName,
         country = :country
-		city = :city`,
+		city = :city
+		email = :email
+		phoneNumber = :phoneNumber
+		consentData = :consentData
+		`,
 		ExpressionAttributeValues: {
 			"companyName": companyName,
 			":country": country,
-			":city": city
+			":city": city,
+			":email": email,
+			":phoneNumber": phoneNumber,
+			":consentData": consentData
 		}
 	}
 
@@ -171,10 +185,32 @@ router.put('/complete', async (req, res) => {
 		}
 
 		res.status(200).json({
-			message: 'Company profile updated successfully',
-			s3Link: s3Link
+			message: 'Company profile updated successfully'
+			// s3Link: s3Link
 		 });
 	})
+})
+
+router.get('/getCurrentAuthenticatedRecruiter', async (req, res) => {
+	const { id } = req.params
+
+	const getParams = {
+		TableName: 'companies-details-table',
+		KeyConditionExpression: 'id = :id',
+		ExpressionAttributeNames: {
+			":id": id
+		}
+	}
+
+	try {
+		const found = documentClient.query(getParams).promise()
+		res.status(200).json({
+			found
+		})
+	} catch(error){
+		console.error('Error finding recruiter', error)
+		res.status(500).send('Error finding recruiter')
+	}
 })
 
 router.post('/createJob', async (req, res) => {
@@ -264,11 +300,26 @@ router.get('/getOneCandidate/:id', async (req, res) => {
 })
 
 router.post('/searchCandidates', () => {
+	//endpoint will use ElasticSearch
 
 })
 
 router.post('/payment', () => {
+	//endpoint will use stripe API
 
+})
+
+router.post('/saveApplicant', () => {
+	//endpoint will use ElasticCache
+
+})
+
+router.post('/forgotPassword', () => {
+
+})
+
+router.post('resetPassword', () => {
+	
 })
 
 module.exports = router;
