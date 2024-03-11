@@ -79,7 +79,8 @@ router.post('/sign_up', async (req, res) => {
 			lastName,
 			id: data.UserSub,
 			email,
-			password: hashedPassword
+			password: hashedPassword,
+			username: username
 		}
 		let dynamoDBParams = {
 			TableName: 'candidates-details-table',
@@ -262,12 +263,80 @@ router.post('/payment', () => {
 
 })
 
-router.post('/forgotPassword', () => {
+router.post('/forgotPassword', (req, res) => {
+	const {
+		username
+	} = req.body
 
+	const cognitoParams = {
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
+		"SecretHash": generateSecretHash(username),
+		"Username": username
+	 }
+
+	return new Promise((resolve, reject) => {
+		cognitoServiceProvider.forgotPassword(cognitoParams, (err, data) => {
+			if (err) {
+			  console.error(err);
+			  reject(err)
+			  return;
+			} else {
+			resolve(data);
+			}
+		});
+	})
 })
 
-router.post('resetPassword', () => {
+router.post('/resetPassword', () => {
+	const {
+		username,
+		verificationCode,
+		newPassword
+	} = req.body
 
+	const cognitoParams = {
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_CANDIDATES,
+		"SecretHash": generateSecretHash(username),
+		"ConfirmationCode": verificationCode,
+		"Username": username,
+		"Password": newPassword
+	 }
+
+	return new Promise((resolve, reject) => {
+		cognitoServiceProvider.confirmForgotPassword(cognitoParams, (err, data) => {
+			if (err) {
+			  console.error(err);
+			  reject(err)
+			  return;
+			} else {
+			resolve(data);
+			}
+		});
+	}).then( async () => {
+	const password = await bcrypt.hash(newPassword, 10)
+
+	const documentClientParams = {
+		TableName: 'candidates-details-table',
+		Key: { username: username },
+		UpdateExpression: `SET
+        password = :password,
+		`,
+		ExpressionAttributeValues: {
+			":password": password,
+		}
+	}
+
+	documentClient.update(documentClientParams, (err, data) => {
+		if (err) {
+			console.error('Error changing password:', err);
+			return res.status(500).json({ error: 'Failed to change password' });
+		}
+
+		res.status(200).json({
+			message: 'Password changed successfully'
+		 });
+	})
+	})
 })
 
 module.exports = router;

@@ -60,7 +60,8 @@ router.post('/sign_up', async (req, res) => {
 			fullName,
 			email,
 			password: hashedPassword,
-			id: data.UserSub
+			id: data.UserSub,
+			username: username
 		}
 
 		let dynamoDBParams = {
@@ -314,12 +315,80 @@ router.post('/saveApplicant', () => {
 
 })
 
-router.post('/forgotPassword', () => {
+router.post('/forgotPassword', (req, res) => {
+	const {
+		username
+	} = req.body
 
+	const cognitoParams = {
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_COMPANIES,
+		"SecretHash": generateSecretHash(username),
+		"Username": username
+	 }
+
+	return new Promise((resolve, reject) => {
+		cognitoServiceProvider.forgotPassword(cognitoParams, (err, data) => {
+			if (err) {
+			  console.error(err);
+			  reject(err)
+			  return;
+			} else {
+			resolve(data);
+			}
+		});
+	})
 })
 
-router.post('resetPassword', () => {
-	
+router.post('/resetPassword', () => {
+	const {
+		username,
+		verificationCode,
+		newPassword
+	} = req.body
+
+	const cognitoParams = {
+		"ClientId": process.env.AWS_USER_POOL_CLIENT_COMPANIES,
+		"SecretHash": generateSecretHash(username),
+		"ConfirmationCode": verificationCode,
+		"Username": username,
+		"Password": newPassword
+	 }
+
+	return new Promise((resolve, reject) => {
+		cognitoServiceProvider.confirmForgotPassword(cognitoParams, (err, data) => {
+			if (err) {
+			  console.error(err);
+			  reject(err)
+			  return;
+			} else {
+			resolve(data);
+			}
+		});
+	}).then( async () => {
+	const password = await bcrypt.hash(newPassword, 10)
+
+	const documentClientParams = {
+		TableName: 'companies-details-table',
+		Key: { username: username },
+		UpdateExpression: `SET
+        password = :password,
+		`,
+		ExpressionAttributeValues: {
+			":password": password,
+		}
+	}
+
+	documentClient.update(documentClientParams, (err, data) => {
+		if (err) {
+			console.error('Error changing password:', err);
+			return res.status(500).json({ error: 'Failed to change passwrod' });
+		}
+
+		res.status(200).json({
+			message: 'Password changed successfully'
+		 });
+	})
+	})
 })
 
 module.exports = router;
