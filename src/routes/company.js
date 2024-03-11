@@ -315,6 +315,11 @@ router.post('/saveApplicant', () => {
 
 })
 
+router.get('/getSavedApplicants', () => {
+	//endpoint will retrieved saved applicants from elasticcache
+
+})
+
 router.post('/forgotPassword', (req, res) => {
 	const {
 		username
