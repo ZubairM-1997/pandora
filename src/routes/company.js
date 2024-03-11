@@ -310,12 +310,12 @@ router.post('/payment', () => {
 
 })
 
-router.post('/saveApplicant', () => {
+router.post('/saveCandidate', () => {
 	//endpoint will use ElasticCache
 
 })
 
-router.get('/getSavedApplicants', () => {
+router.get('/getSavedCandidates', () => {
 	//endpoint will retrieved saved applicants from elasticcache
 
 })
