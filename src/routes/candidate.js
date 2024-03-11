@@ -258,8 +258,12 @@ router.post('/searchJobs', () => {
 
 })
 
-router.post('/payment', () => {
+router.post('/paymentSubscribe', () => {
 	//will use StripeAPI
+
+})
+
+router.post('/cancelSubscription', () => {
 
 })
 

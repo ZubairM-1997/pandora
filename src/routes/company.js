@@ -305,8 +305,12 @@ router.post('/searchCandidates', () => {
 
 })
 
-router.post('/payment', () => {
-	//endpoint will use stripe API
+router.post('/paymentSubscribe', () => {
+	//will use StripeAPI
+
+})
+
+router.post('/cancelSubscription', () => {
 
 })
 
