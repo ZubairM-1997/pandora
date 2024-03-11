@@ -263,6 +263,29 @@ router.post('/payment', () => {
 
 })
 
+router.get('/getCurrentAuthenticatedCandidate', async (req, res) => {
+	const { id } = req.params
+
+	const getParams = {
+		TableName: 'candidates-details-table',
+		KeyConditionExpression: 'id = :id',
+		ExpressionAttributeNames: {
+			":id": id
+		}
+	}
+
+	try {
+		const found = documentClient.query(getParams).promise()
+		res.status(200).json({
+			found
+		})
+	} catch(error){
+		console.error('Error finding recruiter', error)
+		res.status(500).send('Error finding recruiter')
+	}
+})
+
+
 router.post('/forgotPassword', (req, res) => {
 	const {
 		username
