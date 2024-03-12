@@ -147,7 +147,25 @@ router.post('/confirmSignUp', async (req, res) => {
 })
 
 router.put('/complete', async (req, res) => {
-	const { age, country } = req.body;
+	const {
+		firstName,
+		lastName,
+		emailAddress,
+		phoneNumber,
+		country,
+		city,
+		dateOfBirth,
+		gender,
+		highestEducation,
+		interestedJobSectors,
+		language1,
+		proficiency1,
+		language2,
+		proficiency2,
+		language3,
+		proficiency3,
+		consentData
+	 } = req.body;
 	const { id } = req.params
 
 	const profilePicS3Params = {
@@ -174,20 +192,51 @@ router.put('/complete', async (req, res) => {
 	  } catch (error) {
 		  console.error("Error deleting previous photo from S3:", error);
 		  throw error;
-	  }
+	}
 
-	  const cvS3UploadLink = s3Client.getSignedUrl('putObject', cvS3Params);
-	  const profilePicUploadLink = s3Client.getSignedUrl('putObject', profilePicS3Params)
+	const cvS3UploadLink = s3Client.getSignedUrl('putObject', cvS3Params);
+	const profilePicUploadLink = s3Client.getSignedUrl('putObject', profilePicS3Params)
 
 	const documentClientParams = {
 		TableName: 'candidates-details-table',
 		Key: { id: id },
 		UpdateExpression: `SET
-        age = :age,
-        country = :country`,
+		firstName = :firstName
+		lastName = :lastName
+		emailAddress = :emailAddress
+		phoneNumber = :phoneNumber
+		country = :country
+		city = :city
+		dateOfBirth = :dateOfBirth
+		gender = :gender
+		highestEducation = :highestEducation
+		interestedJobSectors = :interestedJobSectors
+		language1 = :language1
+		proficiency1 = :proficiency1
+		language2 = :language2
+		proficiency2 = :proficiency2
+		language3 = :language3
+		proficiency3 = :proficiency3
+        consentData = :consentData,
+       `,
 		ExpressionAttributeValues: {
-			":age": age,
-			"country": country
+			":firstName": firstName,
+			":lastName": lastName,
+			":emailAddress": emailAddress,
+			":phoneNumber": phoneNumber,
+			":country": country,
+			":city": city,
+			":dateOfBirth": dateOfBirth,
+			":gender": gender,
+			":highestEducation": highestEducation,
+			":interestedJobSectors": interestedJobSectors,
+			":language1": language1,
+			":proficiency1": proficiency1,
+			":language2": language2,
+			":proficiency2": proficiency2,
+			":language3": language3,
+			":proficiency3": proficiency3,
+			":consentData": consentData,
 		}
 	}
 
