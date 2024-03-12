@@ -139,25 +139,6 @@ router.put('/complete', async (req, res) => {
 	} = req.body;
 	const { id } = req.params
 
-	// const S3Params = {
-	// 	Bucket: 'company-profile-pics-bucket',
-	// 	Key: id
-	// }
-
-	// try {
-	// 	const response = await s3Client.headObject(S3Params).promise();
-	// 	if (response.status === 200){
-	// 		  await s3Client.deleteObject(S3Params).promise();
-	// 		  console.log("Previous picture deleted successfully")
-	// 	}
-	//   } catch (error) {
-	// 	  console.error("Error deleting previous photo from S3:", error);
-	// 	  throw error;
-	//   }
-
-	//   const s3Link = s3Client.getSignedUrl('putObject', S3Params)
-
-
 	const documentClientParams = {
 		TableName: 'companies-details-table',
 		Key: { id: id },
@@ -187,7 +168,6 @@ router.put('/complete', async (req, res) => {
 
 		res.status(200).json({
 			message: 'Company profile updated successfully'
-			// s3Link: s3Link
 		 });
 	})
 })
@@ -300,17 +280,23 @@ router.get('/getOneCandidate/:id', async (req, res) => {
 
 })
 
+router.put('/updateProfile', () => {
+
+})
+
 router.post('/searchCandidates', () => {
 	//endpoint will use ElasticSearch
 
 })
 
 router.post('/paymentSubscribe', () => {
-	//will use StripeAPI
+	//will use SkrillAPI
+	// might need to save SOME payment information into dynamodb
 
 })
 
 router.post('/cancelSubscription', () => {
+	//will use SkrillAPI
 
 })
 
@@ -320,7 +306,7 @@ router.post('/saveCandidate', () => {
 })
 
 router.get('/getSavedCandidates', () => {
-	//endpoint will retrieved saved applicants from elasticcache
+	//endpoint will retrieve saved applicants from elasticcache
 
 })
 

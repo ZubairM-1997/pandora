@@ -6,16 +6,13 @@ const router = express.Router();
 const bodyParser = require('body-parser');
 const {
 	cognitoServiceProvider,
-	dynamoDB,
 	s3Client,
 	documentClient
 } = require('../aws.js')
 
 const app = express();
 const bcrypt = require("bcrypt");
-const uuid = require("uuid").v4;
 const { createHmac } = require('crypto');
-const { UserImportJobStatusType } = require('@aws-sdk/client-cognito-identity-provider');
 
 // Middleware to parse JSON request body
 app.use(bodyParser.json());
@@ -307,17 +304,27 @@ router.post('/searchJobs', () => {
 
 })
 
+router.put('/updateProfile', () => {
+	// will have to call Skrill API to update payment information
+	// will have to update CV, profile pic and cover letter s3 buckets
+
+})
+
+
 router.post('/paymentSubscribe', () => {
-	//will use StripeAPI
+	//will use SkrillAPI
+	// might need to save SOME payment information into dynamodb
 
 })
 
 router.post('/cancelSubscription', () => {
-
+	//will use SkrillAPI
 })
 
 router.get('/getCurrentAuthenticatedCandidate', async (req, res) => {
 	const { id } = req.params
+	// also need to retrieve the photo from the s3 bucket
+	// will also need to retrieve some card information from Skrill API
 
 	const getParams = {
 		TableName: 'candidates-details-table',
