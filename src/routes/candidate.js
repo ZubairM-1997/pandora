@@ -295,7 +295,37 @@ router.get('/getOneJob/:job_id', async (req, res) => {
 	}
 })
 
-router.post('/createApplication', () => {
+router.post('/createApplication', async (req, res) => {
+	const {
+		candidateId,
+		jobId,
+		cvDocument,
+		coverLetterDocument,
+		candidatePicture
+	} = req.params
+
+	try {
+		const item = {
+			job_id: jobId,
+			candidate_id: candidateId,
+			dateApplied: Date.now(),
+		}
+
+		let dynamoDBParams = {
+			TableName: 'applications-table',
+			Item: item
+		}
+
+
+		await documentClient.put(dynamoDBParams).promise()
+		// will send email to candidate and recruiter once application has been submitted
+		// might have to save application documents into an s3 bucket too
+
+
+	} catch(error){
+		console.error("Error saving data to applications table:", error);
+		throw error;
+	}
 
 })
 

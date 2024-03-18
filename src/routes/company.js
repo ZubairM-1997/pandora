@@ -6,9 +6,8 @@ const router = express.Router();
 const bodyParser = require('body-parser');
 const {
 	cognitoServiceProvider,
-	dynamoDB,
 	s3Client,
-	documentClient
+	documentClient,
 } = require('../aws.js')
 
 const app = express();
@@ -200,11 +199,13 @@ router.post('/createJob', async (req, res) => {
 		jobType,
 		relocationAssistance,
 		industry,
-		description
+		description,
+		companyId
 	} = req.body;
 
 	const job = {
 		job_id: uuid(),
+		company_id: companyId,
 		jobTitle,
 		jobType,
 		relocationAssistance,
@@ -300,14 +301,46 @@ router.post('/cancelSubscription', () => {
 
 })
 
-router.post('/saveCandidate', () => {
-	//endpoint will use ElasticCache
+router.post('/saveCandidate', async (req, res) => {
+	const { companyId, candidateData } = req.body;
+	try {
+		let dynamoDBParams = {
+			TableName: 'saved-candidates',
+			Item: {
+				'company-id': companyId,
+				'candidateData': candidateData
+			}
+		}
 
-})
+	  await documentClient.put(dynamoDBParams).promise()
+
+	  res.status(200).json({ message: 'Candidate saved successfully.' });
+	} catch (err) {
+	  console.error(err);
+	  res.status(500).json({ error: 'Failed to save candidate.' });
+	}
+  });
 
 router.get('/getSavedCandidates', () => {
-	//endpoint will retrieve saved applicants from elasticcache
+	const { companyId } = req.params
 
+	const getParams = {
+		TableName: 'saved-candidates',
+		KeyConditionExpression: 'company-id = :company-id',
+		ExpressionAttributeNames: {
+			":company-id": companyId
+		}
+	}
+
+	try {
+		const found = documentClient.query(getParams).promise()
+		res.status(200).json({
+			found
+		})
+	} catch(error){
+		console.error('Error finding recruiter', error)
+		res.status(500).send('Error finding recruiter')
+	}
 })
 
 router.post('/forgotPassword', (req, res) => {

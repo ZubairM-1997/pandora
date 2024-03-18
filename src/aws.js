@@ -17,5 +17,5 @@ module.exports = {
 	dynamoDB,
 	s3Client,
 	cognitoServiceProvider,
-	documentClient
+	documentClient,
 }
